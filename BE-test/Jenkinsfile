@@ -1,0 +1,57 @@
+pipeline {
+    // 이 파이프라인을 실행할 환경을 지정합니다.
+    // 쿠버네티스에서 jenkins-agent Pod를 동적으로 생성하여 사용합니다.
+    agent any
+
+    // 파이프라인에서 사용할 환경 변수들을 정의합니다.
+    environment {
+        // Harbor 주소와 이미지 이름을 지정합니다.
+        HARBOR_REGISTRY = '192.168.56.12:30080'
+        HARBOR_PROJECT = 'library' // Harbor에 생성한 프로젝트 이름 (기본값: library)
+        DOCKER_IMAGE_NAME = 'backend-app'
+        // Harbor 로그인 Credential ID를 지정합니다. (이전에 Jenkins에서 만든 ID)
+        HARBOR_CREDENTIAL_ID = 'harbor-credential'
+    }
+
+    // 파이프라인의 각 단계를 정의합니다.
+    stages {
+        // 1단계: Git 소스 코드 가져오기
+        stage('Checkout') {
+            steps {
+                // 현재 Jenkinsfile이 있는 Git 저장소의 코드를 가져옵니다.
+                checkout scm
+            }
+        }
+
+        // 2단계: 애플리케이션 빌드 (Gradle 사용 예시)
+        stage('Build') {
+            steps {
+                // Gradle Wrapper를 사용하여 프로젝트를 빌드합니다.
+                sh './gradlew build'
+            }
+        }
+
+        // 3단계: Docker 이미지 빌드 및 푸시
+        stage('Build and Push Image') {
+            steps {
+                script {
+                    // Harbor에 로그인하기 위해 이전에 저장한 Credential을 사용합니다.
+                    withCredentials([usernamePassword(credentialsId: HARBOR_CREDENTIAL_ID, usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                        // 1. Docker 이미지에 붙일 고유한 태그를 생성합니다. (예: backend-app:1)
+                        def imageTag = "${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
+                        def fullImageName = "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${imageTag}"
+
+                        // 2. Harbor에 로그인합니다.
+                        sh "docker login -u ${HARBOR_USER} -p ${HARBOR_PASS} ${HARBOR_REGISTRY}"
+
+                        // 3. Dockerfile을 사용하여 이미지를 빌드합니다.
+                        sh "docker build -t ${fullImageName} ."
+
+                        // 4. 빌드된 이미지를 Harbor로 푸시합니다.
+                        sh "docker push ${fullImageName}"
+                    }
+                }
+            }
+        }
+    }
+}
