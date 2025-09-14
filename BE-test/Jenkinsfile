@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'jenkins-agent'
+    }
 
     environment {
         HARBOR_REGISTRY = '192.168.56.12:30080'
