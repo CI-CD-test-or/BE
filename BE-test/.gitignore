@@ -1,7 +1,6 @@
 ### Gradle ###
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 !gradlew
 !gradlew.bat
 !**/src/main/**/build/
@@ -15,6 +14,8 @@ logs/
 ### JAR / WAR (빌드 산출물은 무시) ###
 *.jar
 *.war
+# Gradle Wrapper는 제외하지 않음
+!gradle/wrapper/gradle-wrapper.jar
 
 ### OS Files ###
 .DS_Store
