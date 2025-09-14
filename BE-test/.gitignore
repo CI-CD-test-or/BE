@@ -2,6 +2,8 @@
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat
 !**/src/main/**/build/
 !**/src/test/**/build/
 
@@ -10,7 +12,7 @@ build/
 logs/
 *.out
 
-### JAR / WAR ###
+### JAR / WAR (빌드 산출물은 무시) ###
 *.jar
 *.war
 
