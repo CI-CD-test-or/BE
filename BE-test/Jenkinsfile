@@ -18,6 +18,7 @@ pipeline {
         stage('Build') {
             steps {
                 dir('BE-test') {    // 📌 BE-test 디렉토리로 이동
+                    sh 'chmod +x gradlew'
                     sh './gradlew build'
                 }
             }
