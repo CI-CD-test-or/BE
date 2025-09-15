@@ -26,13 +26,10 @@ pipeline {
         stage('Build with Gradle') {
             steps {
                 container('gradle') {
-                    // ✅ [최적화] Gradle 캐시를 재적용하여 의존성 다운로드 시간을 단축합니다.
-                    // (Pipeline Caching Directive Plugin 설치 필요)
-                    cache(path: '/home/jenkins/.gradle/caches', key: "gradle-${(env.BRANCH_NAME ?: 'main').replaceAll('/', '-')}") {
-                        dir(PROJECT_DIR) {
-                            sh 'chmod +x gradlew'
-                            sh './gradlew build --no-daemon'
-                        }
+                    // cache 블록이 제거된 버전입니다.
+                    dir(PROJECT_DIR) {
+                        sh 'chmod +x gradlew'
+                        sh './gradlew build --no-daemon'
                     }
                 }
             }
@@ -50,8 +47,6 @@ pipeline {
                             sh """
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
-
-                            // ✅ [최적화] TLS 검증 건너뛰기 옵션은 그대로 유지합니다.
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
