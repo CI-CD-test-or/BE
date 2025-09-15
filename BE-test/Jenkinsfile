@@ -3,9 +3,9 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10')) // 빌드 기록은 최신 10개만 유지
-        disableConcurrentBuilds()                      // 동시에 여러 빌드가 실행되지 않도록 방지
-        timeout(time: 30, unit: 'MINUTES')             // 빌드 타임아웃 30분 설정
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
     }
 
     // 2. 환경 변수 재구성
@@ -14,13 +14,12 @@ pipeline {
         HARBOR_PROJECT       = 'cicd-apps'
         DOCKER_IMAGE_NAME    = 'backend-app'
         HARBOR_CREDENTIAL_ID = 'harbor-credential'
-        PROJECT_DIR          = 'BE-test' // 소스 코드 디렉터리를 변수로 관리
+        PROJECT_DIR          = 'BE-test'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Workspace를 정리하여 이전 빌드의 영향 제거
                 cleanWs()
                 checkout scm
             }
@@ -50,7 +49,10 @@ pipeline {
                             sh """
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
-                            
+
+                            // ✅ [수정] Kaniko 컨테이너의 시스템 신뢰 목록에 Harbor CA 인증서를 추가합니다.
+                            sh 'update-ca-certificates'
+
                             // Kaniko 실행
                             sh """
                                 /kaniko/executor \\
@@ -67,7 +69,7 @@ pipeline {
         }
     }
 
-    // 빌드 후 정리 작업 (성공/실패 여부와 관계없이 항상 실행)
+    // 빌드 후 정리 작업
     post {
         always {
             cleanWs()
