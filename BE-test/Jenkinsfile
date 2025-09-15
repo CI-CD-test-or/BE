@@ -29,8 +29,6 @@ pipeline {
         stage('Build with Gradle') {
             steps {
                 container('gradle') {
-                    // ✅ [수정] cache 블록을 제거하여 플러그인 미설치 오류를 회피합니다.
-                    // 이렇게 하면 빌드 속도는 조금 느려질 수 있으나, 파이프라인은 성공적으로 실행됩니다.
                     dir(PROJECT_DIR) {
                         sh 'chmod +x gradlew'
                         sh './gradlew build --no-daemon'
@@ -53,14 +51,14 @@ pipeline {
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
                             
-                            // Kaniko 실행 (캐시 기능은 Kaniko 자체 캐시를 사용)
+                            // ✅ [수정] Kaniko 버전에 맞는 인증서 옵션으로 변경
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
                                     --dockerfile \$(pwd)/${PROJECT_DIR}/Dockerfile \\
                                     --destination ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} \\
                                     --cache=true --cache-repo ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/cache \\
-                                    --custom-ca-cert-file /usr/local/share/ca-certificates/harbor/ca.crt
+                                    --registry-certificate ${HARBOR_REGISTRY}=/usr/local/share/ca-certificates/harbor/ca.crt
                             """
                         }
                     }
