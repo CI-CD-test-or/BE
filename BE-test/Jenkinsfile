@@ -2,7 +2,7 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        HARBOR_REGISTRY      = '192.168.56.12:30080'
+        HARBOR_REGISTRY      = '192.168.56.12:30443'
         HARBOR_PROJECT       = 'cicd-apps'
         DOCKER_IMAGE_NAME    = 'backend-app'
         HARBOR_CREDENTIAL_ID = 'harbor-credential'
