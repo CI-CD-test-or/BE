@@ -49,18 +49,15 @@ pipeline {
                             sh """
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
-
-                            // ✅ [수정] Kaniko가 신뢰하는 전용 경로에 디렉터리를 만들고 인증서를 복사합니다.
-                            sh 'mkdir -p /kaniko/ssl/certs'
-                            sh 'cp /usr/local/share/ca-certificates/harbor/harbor.crt /kaniko/ssl/certs/harbor-ca.crt'
                             
-                            // Kaniko 실행 (인증서 관련 옵션은 이제 필요 없습니다)
+                            // ✅ [수정] 인증서 복사 단계를 삭제하고, --skip-tls-verify 옵션을 추가합니다.
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
                                     --dockerfile \$(pwd)/${PROJECT_DIR}/Dockerfile \\
                                     --destination ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} \\
-                                    --cache=true --cache-repo ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/cache
+                                    --cache=true --cache-repo ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/cache \\
+                                    --skip-tls-verify
                             """
                         }
                     }
