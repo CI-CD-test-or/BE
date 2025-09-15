@@ -50,10 +50,11 @@ pipeline {
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
 
-                            // ✅ [수정] Harbor 인증서를 Kaniko 컨테이너의 표준 신뢰 경로로 복사합니다.
-                            sh 'cp /usr/local/share/ca-certificates/harbor/harbor.crt /etc/ssl/certs/harbor-ca.crt'
+                            // ✅ [수정] Kaniko가 신뢰하는 전용 경로에 디렉터리를 만들고 인증서를 복사합니다.
+                            sh 'mkdir -p /kaniko/ssl/certs'
+                            sh 'cp /usr/local/share/ca-certificates/harbor/harbor.crt /kaniko/ssl/certs/harbor-ca.crt'
                             
-                            // ✅ [수정] --registry-certificate 옵션은 더 이상 필요 없으므로 제거합니다.
+                            // Kaniko 실행 (인증서 관련 옵션은 이제 필요 없습니다)
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
