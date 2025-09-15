@@ -2,10 +2,10 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        HARBOR_REGISTRY      = '192.168.56.12:30443'   // Harbor HTTPS 주소
-        HARBOR_PROJECT       = 'cicd-apps'             // Harbor 프로젝트명
-        DOCKER_IMAGE_NAME    = 'backend-app'           // 푸시할 이미지명
-        HARBOR_CREDENTIAL_ID = 'harbor-credential'     // Jenkins에 저장한 Harbor 계정
+        HARBOR_REGISTRY      = '192.168.56.12:30443'  // Harbor HTTPS 주소
+        HARBOR_PROJECT       = 'cicd-apps'            // Harbor 프로젝트명
+        DOCKER_IMAGE_NAME    = 'backend-app'          // 푸시할 이미지명
+        HARBOR_CREDENTIAL_ID = 'harbor-credential'    // Jenkins에 저장한 Harbor 계정
     }
 
     stages {
@@ -26,29 +26,30 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        // ✅ Docker-in-Docker 스테이지를 Kaniko 스테이지로 교체
+        stage('Build and Push with Kaniko') {
             steps {
-                container('docker') {
+                // Jenkins Pod 템플릿에 설정된 'kaniko' 컨테이너 내부에서 실행
+                container('kaniko') {
                     script {
-                        dir('BE-test') {
-                            withCredentials([usernamePassword(
-                                credentialsId: HARBOR_CREDENTIAL_ID,
-                                usernameVariable: 'HARBOR_USER',
-                                passwordVariable: 'HARBOR_PASS'
-                            )]) {
-                                def imageTag      = "${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
-                                def fullImageName = "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${imageTag}"
-
-                                // ✅ Harbor 로그인 (Self-signed 인증서 무시)
-                                sh """
-                                    echo "${HARBOR_PASS}" | docker login https://${HARBOR_REGISTRY} \
-                                      -u "${HARBOR_USER}" --password-stdin || exit 1
-                                """
-
-                                // ✅ Docker Build & Push
-                                sh "docker build -t ${fullImageName} ."
-                                sh "docker push ${fullImageName}"
-                            }
+                        withCredentials([usernamePassword(
+                            credentialsId: HARBOR_CREDENTIAL_ID,
+                            usernameVariable: 'HARBOR_USER',
+                            passwordVariable: 'HARBOR_PASS'
+                        )]) {
+                            // Kaniko가 Harbor에 인증할 수 있도록 config.json 파일 생성
+                            sh """
+                              echo "{\\"auths\\":{\\"${HARBOR_REGISTRY}\\":{\\"username\\":\\"${HARBOR_USER}\\",\\"password\\":\\"${HARBOR_PASS}\\"}}}" > /kaniko/.docker/config.json
+                            """
+                            
+                            // Kaniko executor를 실행하여 이미지 빌드 및 푸시
+                            sh """
+                              /kaniko/executor \\
+                                --context `pwd`/BE-test \\
+                                --dockerfile `pwd`/BE-test/Dockerfile \\
+                                --destination ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} \\
+                                --skip-tls-verify
+                            """
                         }
                     }
                 }
