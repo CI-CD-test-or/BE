@@ -51,14 +51,14 @@ pipeline {
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
                             
-                            // ✅ [수정] Kaniko 버전에 맞는 인증서 옵션으로 변경
+                            // Kaniko 실행
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
                                     --dockerfile \$(pwd)/${PROJECT_DIR}/Dockerfile \\
                                     --destination ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} \\
                                     --cache=true --cache-repo ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/cache \\
-                                    --registry-certificate ${HARBOR_REGISTRY}=/usr/local/share/ca-certificates/harbor/ca.crt
+                                    --registry-certificate ${HARBOR_REGISTRY}=/usr/local/share/ca-certificates/harbor/harbor.crt
                             """
                         }
                     }
