@@ -20,7 +20,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // 3. Workspace 정리 단계 추가
+                // Workspace를 정리하여 이전 빌드의 영향 제거
                 cleanWs()
                 checkout scm
             }
@@ -29,8 +29,9 @@ pipeline {
         stage('Build with Gradle') {
             steps {
                 container('gradle') {
-                    // 4. Gradle 캐시 적용으로 빌드 속도 향상
-                    cache(path: '/home/jenkins/.gradle/caches', key: "gradle-${scm.GIT_BRANCH}") {
+                    // Gradle 캐시 적용으로 빌드 속도 향상
+                    // ✅ [수정] scm.GIT_BRANCH -> env.BRANCH_NAME으로 변경하여 보안 오류 해결
+                    cache(path: '/home/jenkins/.gradle/caches', key: "gradle-${env.BRANCH_NAME.replaceAll('/', '-')}") {
                         dir(PROJECT_DIR) {
                             sh 'chmod +x gradlew'
                             sh './gradlew build --no-daemon'
@@ -54,7 +55,7 @@ pipeline {
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
                             
-                            // 5. Kaniko 캐시 적용 및 보안 강화 (--skip-tls-verify 제거)
+                            // Kaniko 캐시 적용 및 Harbor CA 인증서 사용
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
@@ -70,7 +71,7 @@ pipeline {
         }
     }
 
-    // 6. 빌드 후 정리 작업 (성공/실패 여부와 관계없이 항상 실행)
+    // 빌드 후 정리 작업 (성공/실패 여부와 관계없이 항상 실행)
     post {
         always {
             cleanWs()
