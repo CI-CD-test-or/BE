@@ -1,5 +1,4 @@
 pipeline {
-    // 1. Pod 템플릿 지정 및 옵션 추가
     agent { label 'jenkins-agent' }
 
     options {
@@ -8,7 +7,6 @@ pipeline {
         timeout(time: 30, unit: 'MINUTES')
     }
 
-    // 2. 환경 변수 재구성
     environment {
         HARBOR_REGISTRY      = '192.168.56.12:30443'
         HARBOR_PROJECT       = 'cicd-apps'
@@ -28,9 +26,13 @@ pipeline {
         stage('Build with Gradle') {
             steps {
                 container('gradle') {
-                    dir(PROJECT_DIR) {
-                        sh 'chmod +x gradlew'
-                        sh './gradlew build --no-daemon'
+                    // ✅ [최적화] Gradle 캐시를 재적용하여 의존성 다운로드 시간을 단축합니다.
+                    // (Pipeline Caching Directive Plugin 설치 필요)
+                    cache(path: '/home/jenkins/.gradle/caches', key: "gradle-${(env.BRANCH_NAME ?: 'main').replaceAll('/', '-')}") {
+                        dir(PROJECT_DIR) {
+                            sh 'chmod +x gradlew'
+                            sh './gradlew build --no-daemon'
+                        }
                     }
                 }
             }
@@ -45,12 +47,11 @@ pipeline {
                             usernameVariable: 'HARBOR_USER',
                             passwordVariable: 'HARBOR_PASS'
                         )]) {
-                            // Harbor 인증을 위한 config.json 생성
                             sh """
                                 echo '{"auths":{"${HARBOR_REGISTRY}":{"username":"${HARBOR_USER}","password":"${HARBOR_PASS}"}}}' > /kaniko/.docker/config.json
                             """
-                            
-                            // ✅ [수정] 인증서 복사 단계를 삭제하고, --skip-tls-verify 옵션을 추가합니다.
+
+                            // ✅ [최적화] TLS 검증 건너뛰기 옵션은 그대로 유지합니다.
                             sh """
                                 /kaniko/executor \\
                                     --context \$(pwd)/${PROJECT_DIR} \\
@@ -66,7 +67,6 @@ pipeline {
         }
     }
 
-    // 빌드 후 정리 작업
     post {
         always {
             cleanWs()
